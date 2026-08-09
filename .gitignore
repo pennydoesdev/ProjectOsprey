@@ -15,3 +15,5 @@ build/
 data/
 blobs/
 test-osprey.txt
+contracts/*
+state/*
