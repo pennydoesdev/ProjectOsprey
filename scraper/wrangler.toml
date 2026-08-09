@@ -19,9 +19,9 @@ crons = ["*/5 * * * *"]
 # Vars
 [vars]
 # How many search queries to run per cron tick
-OSPREY_QUERIES_PER_RUN = "2"
+OSPREY_QUERIES_PER_RUN = "4"
 # How many contract pages to fetch per query
-OSPREY_PAGES_PER_QUERY = "2"
+OSPREY_PAGES_PER_QUERY = "3"
 # How many frontier terms to keep
 OSPREY_FRONTIER_LIMIT = "200"
 # Max term length to mine (chars)

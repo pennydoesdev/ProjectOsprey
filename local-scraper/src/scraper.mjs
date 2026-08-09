@@ -346,7 +346,11 @@ async function processContract(browser, contract) {
   const page = await browser.newPage({ userAgent: CFG.userAgent });
   let browser2; // for downloads
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 45000 });
+    // Wait for content to populate
+    try {
+      await page.waitForSelector('h1, .description, [data-testid*="description"], .opp-description, .solicitation-title, mat-card, app-opp-details, .content, main', { timeout: 10000 });
+    } catch (e) { /* different layout */ }
     await sleep(2500); // wait for redirects + JS
     const finalUrl = page.url();
     const html = await page.content();
@@ -473,10 +477,16 @@ async function searchViaHtml(browser, term) {
   const url = buildSearchUrl(term);
   const page = await browser.newPage({ userAgent: CFG.userAgent });
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
-    await sleep(2000);
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    // Wait for result links to appear (Angular SPA renders them after load)
+    try {
+      await page.waitForSelector('a[href*="/opp/"]', { timeout: 10000 });
+    } catch (e) { /* no results */ }
+    await sleep(1000);
     const html = await page.content();
-    return parseSearchResults(html).slice(0, CFG.pagesPerQuery);
+    const results = parseSearchResults(html);
+    console.log(`  search "${term}": found ${results.length} results`);
+    return results.slice(0, CFG.pagesPerQuery);
   } finally {
     await page.close().catch(() => {});
   }

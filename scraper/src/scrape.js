@@ -102,10 +102,19 @@ async function searchViaHtml(env, term, limit) {
   try {
     browser = await puppeteer(env);
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
-    await sleep(1500); // let JS render results
+    // Wait for network to be mostly idle, then for actual result links to appear.
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    // Wait up to 10s for at least one /opp/ link (the SPA populates results after load)
+    try {
+      await page.waitForSelector('a[href*="/opp/"]', { timeout: 10000 });
+    } catch (e) {
+      // no results, or page didn't render — fall through to whatever the page has
+    }
+    await sleep(1000);
     const html = await page.content();
-    return parseSearchResults(html).slice(0, limit);
+    const results = parseSearchResults(html);
+    console.log(`  search "${term}": found ${results.length} results`);
+    return results.slice(0, limit);
   } catch (e) {
     console.error(`search html for "${term}" failed: ${e.message}`);
     return [];
@@ -125,8 +134,12 @@ async function processContract(env, contract) {
     browser = await puppeteer(env);
     const page = await browser.newPage();
     await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (ProjectOsprey/0.1)");
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
-    await sleep(2000); // wait for any redirects (NECO) and JS
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 45000 });
+    // Wait for the page content to actually appear
+    try {
+      await page.waitForSelector('h1, .description, [data-testid*="description"], .opp-description, .solicitation-title, mat-card, app-opp-details, .content, main', { timeout: 10000 });
+    } catch (e) { /* page may have rendered differently */ }
+    await sleep(2000); // let JS finish populating attachments table
 
     // Follow any meta refresh / JS redirect
     const finalUrl = page.url();
