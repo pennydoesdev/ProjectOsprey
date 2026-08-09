@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Osprey — Document Archive</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="/" class="brand">
+    <span class="brand-mark">⬢</span>
+    <span class="brand-name">Osprey</span>
+  </a>
+  <nav class="topnav">
+    <a href="/" data-route="search">Search</a>
+    <a href="/tags" data-route="tags">Tags</a>
+    <a href="/graph" data-route="graph">Graph</a>
+    <a href="/about" data-route="about">About</a>
+  </nav>
+  <div class="backend-badge" id="backend-badge">…</div>
+</header>
+
+<main id="view"></main>
+
+<template id="tpl-search">
+  <section class="search-hero">
+    <h1>Search the archive</h1>
+    <p class="subtle" id="archive-stats">Loading archive stats…</p>
+    <form id="search-form" class="search-form">
+      <input
+        id="q"
+        type="search"
+        name="q"
+        autocomplete="off"
+        placeholder="Search by name, tag, content, or ask a question…"
+        autofocus
+      />
+      <button type="submit">Search</button>
+    </form>
+    <div class="quick-tags" id="quick-tags"></div>
+  </section>
+
+  <section class="results-layout" hidden id="results-layout">
+    <aside class="facets" id="facets">
+      <h3>Filter</h3>
+      <div class="facet" data-facet="type">
+        <h4>Type</h4>
+        <ul></ul>
+      </div>
+      <div class="facet" data-facet="tag">
+        <h4>Tag</h4>
+        <ul></ul>
+      </div>
+      <div class="facet" data-facet="year">
+        <h4>Year</h4>
+        <ul></ul>
+      </div>
+      <div class="facet" data-facet="source">
+        <h4>Source</h4>
+        <ul></ul>
+      </div>
+      <button class="clear-filters" id="clear-filters">Clear all</button>
+    </aside>
+
+    <section class="results">
+      <div class="results-header">
+        <span id="results-count">—</span>
+        <label class="rag-toggle">
+          <input type="checkbox" id="rag-mode" />
+          <span>AI answer</span>
+        </label>
+      </div>
+      <div id="rag-answer" class="rag-answer" hidden></div>
+      <div id="results-list" class="results-list"></div>
+      <div class="results-footer">
+        <button id="load-more" hidden>Load more</button>
+      </div>
+    </section>
+  </section>
+</template>
+
+<template id="tpl-doc-card">
+  <article class="doc-card">
+    <header>
+      <h3><a href="#" class="doc-link"></a></h3>
+      <div class="doc-meta">
+        <span class="doc-type"></span>
+        <span class="doc-source"></span>
+        <span class="doc-date"></span>
+        <span class="doc-size"></span>
+      </div>
+    </header>
+    <p class="doc-snippet"></p>
+    <ul class="doc-tags"></ul>
+  </article>
+</template>
+
+<template id="tpl-doc">
+  <article class="doc-detail">
+    <a href="#/" class="back">← Back to search</a>
+    <h1 id="doc-title"></h1>
+    <div class="doc-meta" id="doc-meta"></div>
+    <div class="doc-actions">
+      <a id="doc-download" class="btn primary" download>Download original</a>
+      <a id="doc-raw" class="btn" target="_blank">Open in new tab</a>
+    </div>
+    <section class="doc-section">
+      <h2>Extracted text</h2>
+      <pre id="doc-text" class="extracted-text"></pre>
+    </section>
+    <section class="doc-section">
+      <h2>Tags</h2>
+      <ul id="doc-tags" class="tag-list"></ul>
+    </section>
+    <section class="doc-section">
+      <h2>Linked entities</h2>
+      <div id="doc-entities" class="entity-list"></div>
+    </section>
+    <section class="doc-section">
+      <h2>Related documents</h2>
+      <ul id="doc-related" class="related-list"></ul>
+    </section>
+  </article>
+</template>
+
+<template id="tpl-tags">
+  <section class="tags-page">
+    <h1>Browse by tag</h1>
+    <p class="subtle">All tags extracted from documents in the archive.</p>
+    <div id="tag-cloud" class="tag-cloud"></div>
+  </section>
+</template>
+
+<template id="tpl-graph">
+  <section class="graph-page">
+    <h1>Knowledge graph</h1>
+    <p class="subtle">Entities extracted from documents, linked by co-occurrence.</p>
+    <div id="graph-controls">
+      <label>Limit <input type="number" id="graph-limit" value="100" min="10" max="500" /></label>
+      <button id="graph-refresh">Refresh</button>
+    </div>
+    <div id="graph-container"></div>
+    <div id="graph-legend" class="graph-legend"></div>
+  </section>
+</template>
+
+<template id="tpl-about">
+  <section class="about">
+    <h1>About this archive</h1>
+    <div id="about-content">Loading…</div>
+  </section>
+</template>
+
+<template id="tpl-loading">
+  <div class="loading">Loading…</div>
+</template>
+
+<template id="tpl-empty">
+  <div class="empty">
+    <h2>No results</h2>
+    <p>Try a different search or clear your filters.</p>
+  </div>
+</template>
+
+</body>
+</html>

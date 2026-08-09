@@ -1,0 +1,17 @@
+node_modules/
+.wrangler/
+.dev.vars
+.env
+.env.local
+dist/
+build/
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local-only test data
+data/
+blobs/
+test-osprey.txt

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.pennydoesdev.projectosprey.scraper</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/Users/peneloperose/Documents/ProjectOsprey/local-scraper/src/scraper.mjs</string>
+        <string>--daemon</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OSPREY_R2_ACCESS_KEY</key>
+        <string>REPLACE_WITH_YOUR_R2_ACCESS_KEY</string>
+        <key>OSPREY_R2_SECRET_KEY</key>
+        <string>REPLACE_WITH_YOUR_R2_SECRET_KEY</string>
+        <key>OSPREY_SAMGOV_API_KEY</key>
+        <string>REPLACE_WITH_YOUR_SAMGOV_API_KEY</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>/Users/peneloperose/Documents/ProjectOsprey/local-scraper</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/peneloperose/Documents/ProjectOsprey/local-scraper/logs/stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/peneloperose/Documents/ProjectOsprey/local-scraper/logs/stderr.log</string>
+    <key>StartInterval</key>
+    <integer>900</integer>
+</dict>
+</plist>

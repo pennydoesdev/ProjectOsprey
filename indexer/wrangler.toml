@@ -1,0 +1,42 @@
+name = "osprey"
+main = "src/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Static UI
+[assets]
+directory = "ui"
+binding = "ASSETS"
+
+# R2 bucket
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "sam-pulls"
+
+# D1 database
+[[d1_databases]]
+binding = "DB"
+database_name = "osprey"
+database_id = "eaf710a6-fa5e-4511-aee2-357015c8abe7"
+
+# Vectorize index
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "osprey-embeddings"
+
+# Workers AI
+[ai]
+binding = "AI"
+
+# Cron every 15 min
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Vars (non-secret config)
+[vars]
+# OSPREY_BUCKET_PREFIX = ""  # optional, limit scanning to a subfolder
+# OSPREY_MAX_FILE_BYTES = "10485760"  # 10MB
+OSPREY_CHUNK_WORDS = "800"
+OSPREY_CHUNK_OVERLAP = "150"
+OSPREY_EMBEDDING_MODEL = "@cf/baai/bge-small-en-v1.5"
+# LLM model is set in code (src/rag.js) so we can iterate without redeploying wrangler.toml.

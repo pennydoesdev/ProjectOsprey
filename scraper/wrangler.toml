@@ -1,0 +1,37 @@
+name = "project-osprey-scraper"
+main = "src/worker.js"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Same R2 bucket as the indexer
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "sam-pulls"
+
+# Browser Rendering (for JS-rendered PIPE pages)
+[browser]
+binding = "BROWSER"
+
+# Cron — every 5 min (for testing; switch to */15 in prod)
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Vars
+[vars]
+# How many search queries to run per cron tick
+OSPREY_QUERIES_PER_RUN = "2"
+# How many contract pages to fetch per query
+OSPREY_PAGES_PER_QUERY = "2"
+# How many frontier terms to keep
+OSPREY_FRONTIER_LIMIT = "200"
+# Max term length to mine (chars)
+OSPREY_MAX_TERM_LEN = "40"
+# Min term length
+OSPREY_MIN_TERM_LEN = "3"
+# Hard cap on contracts downloaded per cron tick
+OSPREY_MAX_CONTRACTS_PER_RUN = "3"
+# Delay between downloads (ms) — be nice to SAM.gov
+OSPREY_DOWNLOAD_DELAY_MS = "1500"
+
+# Admin token for /api/admin/* routes
+# Set with: wrangler secret put OSPREY_ADMIN_TOKEN

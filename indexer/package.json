@@ -1,0 +1,17 @@
+{
+  "name": "project-osprey-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "db:init": "wrangler d1 execute osprey --file schema.sql",
+    "vector:create": "wrangler vectorize create osprey-embeddings --dimensions=384 --metric=cosine"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {}
+}
