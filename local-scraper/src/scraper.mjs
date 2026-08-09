@@ -268,8 +268,25 @@ function htmlToText(html) {
 }
 
 function mineTerms(text) {
-  const STOP = new Set("a an the of and or in on at to for from by with as is are was were be been being it its this that these those not no so do does did has have had can could will would should there here when where which who whom whose what how about into through during before after above below between up down out off over under again further then once such only own same than too very just also now i me my mine you your yours he him his she her hers we us our ours they them their theirs am is are was were been be have has had do does did will would shall should may might must ought".split(/\s+/));
-  const tokens = text.toLowerCase().replace(/[^\w\s\-]/g, " ").split(/\s+/).filter(t => t.length >= CFG.minTermLen && t.length <= CFG.maxTermLen && !STOP.has(t) && !/^\d+$/.test(t));
+  const STOP = new Set([
+    "a","an","the","of","and","or","in","on","at","to","for","from","by","with","as",
+    "is","are","was","were","be","been","being","it","its","this","that","these","those",
+    "not","no","so","do","does","did","has","have","had","can","could","will","would",
+    "should","there","here","when","where","which","who","whom","whose","what","how",
+    "about","into","through","during","before","after","above","below","between",
+    "up","down","out","off","over","under","again","further","then","once","such",
+    "only","own","same","than","too","very","just","also","now",
+    "i","me","my","mine","you","your","yours","he","him","his","she","her","hers",
+    "we","us","our","ours","they","them","their","theirs",
+    "am","be","have","do","will","would","shall","should","may","might","must","ought",
+    "sam","gov","skip","main","content","official","website","united","states",
+    "site","page","click","view","data","search","results","result","show","more","less","all","any",
+    "navigation","menu","footer","header","button","link","home","back","sign","log","in",
+    "new","window","open","download","upload","file","select","filter",
+    "shall","must","may","within","upon","without","pursuant","thereof","herein","hereinafter",
+  ]);
+  const tokens = text.toLowerCase().replace(/[^\w\s\-]/g, " ").split(/\s+/)
+    .filter(t => t.length >= CFG.minTermLen && t.length <= CFG.maxTermLen && !STOP.has(t) && !/^\d+$/.test(t));
   const unigrams = new Set(tokens);
   const bigrams = new Set();
   for (let i = 0; i < tokens.length - 1; i++) bigrams.add(`${tokens[i]} ${tokens[i+1]}`);
