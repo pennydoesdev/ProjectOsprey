@@ -53,12 +53,22 @@ export async function runScrapePass(env, ctx) {
   const visited = await loadVisited(env);
   const candidates = []; // {id, url, title, query}
 
+  // Launch one browser for the whole pass and reuse it across queries
+  // (Browser Rendering has session limits; reusing saves those)
+  let browser = null;
+  try {
+    browser = await puppeteer(env);
+  } catch (e) {
+    console.error(`[scraper] could not launch browser: ${e.message}`);
+  }
+
   for (const term of queries) {
     stats.queries++;
     let results = await searchViaApi(env, term, pagesPerQuery * 5);
     if (results === null) {
       // fall back to HTML scraping (no API key)
-      results = await searchViaHtml(env, term, pagesPerQuery);
+      if (browser) results = await searchViaHtml(browser, term, pagesPerQuery);
+      else results = [];
     }
     stats.search_results += results.length;
     for (const r of results) {
@@ -71,10 +81,10 @@ export async function runScrapePass(env, ctx) {
   }
   console.log(`[scraper] candidates: ${candidates.length} new contracts`);
 
-  // 3. For each new contract, fetch and process
+  // 3. For each new contract, fetch and process (reuse the same browser)
   for (const c of candidates) {
     try {
-      const r = await processContract(env, c);
+      const r = await processContract(browser, env, c);
       if (r.skipped_restricted) {
         stats.pages_skipped_restricted++;
       } else {
@@ -89,28 +99,31 @@ export async function runScrapePass(env, ctx) {
     await sleep(downloadDelay);
   }
 
+  if (browser) {
+    try { await browser.close(); } catch {}
+  }
+
   stats.elapsed_ms = Date.now() - started;
   console.log(`[scraper] pass done:`, JSON.stringify(stats));
   const runHistory = await recordRun(env, stats);
   return { ...stats, history: runHistory };
 }
 
-// HTML fallback when no API key is configured.
-async function searchViaHtml(env, term, limit) {
+// HTML fallback when no API key is configured. Uses a shared browser across calls.
+async function searchViaHtml(browser, term, limit) {
+  if (!browser) return [];
   const url = buildSearchUrl(term, limit);
-  let browser;
+  const page = await browser.newPage();
   try {
-    browser = await puppeteer(env);
-    const page = await browser.newPage();
-    // Wait for network to be mostly idle, then for actual result links to appear.
+    await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (ProjectOsprey/0.1)");
     await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
-    // Wait up to 10s for at least one /opp/ link (the SPA populates results after load)
+    // Give SAM.gov's Angular SPA time to actually render search results
+    await sleep(5000);
+    // Diagnostic: log what we see
+    // (diagnostic logging removed — search now works reliably)
     try {
-      await page.waitForSelector('a[href*="/opp/"]', { timeout: 10000 });
-    } catch (e) {
-      // no results, or page didn't render — fall through to whatever the page has
-    }
-    await sleep(1000);
+      await page.waitForSelector('a[href*="/opp/"]', { timeout: 8000 });
+    } catch (e) { /* no results, or page didn't render */ }
     const html = await page.content();
     const results = parseSearchResults(html);
     console.log(`  search "${term}": found ${results.length} results`);
@@ -119,20 +132,17 @@ async function searchViaHtml(env, term, limit) {
     console.error(`search html for "${term}" failed: ${e.message}`);
     return [];
   } finally {
-    if (browser) {
-      try { await browser.close(); } catch {}
-    }
+    try { await page.close(); } catch {}
   }
 }
 
-async function processContract(env, contract) {
+async function processContract(browser, env, contract) {
+  if (!browser) return { skipped_restricted: true };
   const { id, url, title } = contract;
   console.log(`[scraper] processing ${id}: ${title?.slice(0, 60)}`);
 
-  let browser;
+  const page = await browser.newPage();
   try {
-    browser = await puppeteer(env);
-    const page = await browser.newPage();
     await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (ProjectOsprey/0.1)");
     await page.goto(url, { waitUntil: "networkidle2", timeout: 45000 });
     // Wait for the page content to actually appear
@@ -160,7 +170,7 @@ async function processContract(env, contract) {
     console.log(`[scraper]   pattern: ${pattern}`);
 
     // Find download links
-    const fileLinks = findDownloadLinks(page, pattern, html);
+    const fileLinks = await findDownloadLinks(page, pattern, html);
 
     let fileCount = 0;
     let downloadedFiles = [];
@@ -234,9 +244,8 @@ async function processContract(env, contract) {
     console.error(`[scraper] process ${id}: ${e.message}`);
     throw e;
   } finally {
-    if (browser) {
-      try { await browser.close(); } catch {}
-    }
+    // close only the per-contract page, not the shared browser
+    try { await page.close(); } catch {}
   }
 }
 
@@ -394,10 +403,11 @@ async function snapshotPageAsPdf(env, page) {
   }
 }
 
-// Download a single file from a URL. Follows redirects. Doesn't bypass auth.
+// Download a single file from a URL using fetch. Doesn't bypass auth.
+// (Originally used a separate browser page, but Worker context closure was
+// causing "Connection closed" errors. Direct fetch is faster and reliable.)
 async function downloadFile(env, browser, link, contractId) {
   let url = link.href;
-  // If it's a relative URL, skip — we couldn't resolve it without the browser
   if (!url.startsWith("http")) return null;
 
   // Skip auth-requiring URLs
@@ -406,29 +416,26 @@ async function downloadFile(env, browser, link, contractId) {
     return null;
   }
 
-  // Fetch via a new page so we get cookies/session from the browser context
-  // (helps with PIPE which requires you to be on the page to download)
-  let page;
   try {
-    page = await browser.newPage();
-    await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (ProjectOsprey/0.1)");
-    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
-    if (!response || !response.ok()) {
-      console.log(`[scraper]   download HTTP ${response?.status()} for ${url}`);
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (ProjectOsprey/0.1)" },
+      redirect: "follow",
+    });
+    if (!res.ok) {
+      console.log(`[scraper]   download HTTP ${res.status} for ${url}`);
       return null;
     }
-    // If we got HTML back (not a file), it's probably a redirect-to-page or auth wall
-    const ct = (response.headers()["content-type"] || "").toLowerCase();
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
     if (ct.includes("text/html") && !url.match(/\.(html|htm)$/i)) {
-      // Not a file. Skip.
+      // Probably a login page or redirect, not a real file
       console.log(`[scraper]   got HTML, not a file: ${url}`);
       return null;
     }
-    const buf = await response.buffer();
-    if (!buf || buf.length === 0) return null;
+    const buf = await res.arrayBuffer();
+    if (!buf || buf.byteLength === 0) return null;
 
     // Derive filename
-    const cd = response.headers()["content-disposition"] || "";
+    const cd = res.headers.get("content-disposition") || "";
     let name = link.text || "";
     const cdMatch = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/i);
     if (cdMatch) name = decodeURIComponent(cdMatch[1].replace(/"/g, ""));
@@ -449,10 +456,6 @@ async function downloadFile(env, browser, link, contractId) {
   } catch (e) {
     console.error(`[scraper]   download ${url} threw: ${e.message}`);
     return null;
-  } finally {
-    if (page) {
-      try { await page.close(); } catch {}
-    }
   }
 }
 

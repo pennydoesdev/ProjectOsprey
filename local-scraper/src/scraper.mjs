@@ -173,12 +173,17 @@ function buildSearchUrl(term) {
 function parseSearchResults(html) {
   const out = [];
   if (!html) return out;
-  const linkRe = /href="(\/opp\/[a-z0-9]+[^"]*|https:\/\/sam\.gov\/opp\/[a-z0-9]+[^"]*)"[^>]*>([\s\S]{0,300}?)<\/a>/gi;
+  // SAM.gov link patterns (as of 2026):
+  //   /opp/<id>/...                  (legacy)
+  //   /workspace/contract/opp/<id>/view   (current)
+  //   /workspace/contractor/opp/<id>     (old workspace)
+  //   https://sam.gov/opp/<id>/...
+  const linkRe = /href="((?:\/workspace\/(?:contract|contractor)\/)?opp\/[a-f0-9]+[^"]*|https:\/\/sam\.gov\/opp\/[a-f0-9]+[^"]*|https:\/\/sam\.gov\/workspace\/(?:contract|contractor)\/opp\/[a-f0-9]+[^"]*)"[^>]*>([\s\S]{0,500}?)<\/a>/gi;
   let m;
   const seen = new Set();
   while ((m = linkRe.exec(html)) !== null) {
     const url = m[1].startsWith("http") ? m[1] : `https://sam.gov${m[1]}`;
-    const idMatch = url.match(/\/opp\/([a-z0-9]+)/i);
+    const idMatch = url.match(/\/opp\/([a-f0-9]+)/i);
     if (!idMatch) continue;
     const id = idMatch[1];
     if (seen.has(id)) continue;

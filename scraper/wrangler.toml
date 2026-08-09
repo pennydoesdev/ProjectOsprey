@@ -12,9 +12,9 @@ bucket_name = "sam-pulls"
 [browser]
 binding = "BROWSER"
 
-# Cron — every 5 min (for testing; switch to */15 in prod)
+# Cron — every 15 min
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["*/15 * * * *"]
 
 # Vars
 [vars]
